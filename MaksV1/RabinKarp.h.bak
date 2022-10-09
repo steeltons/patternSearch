@@ -1,0 +1,90 @@
+//
+// Created by User on 29.05.2022.
+//
+
+#ifndef BMH_RABINKARP_H
+#define BMH_RABINKARP_H
+
+#include <string>
+#include <map>
+#include <vector>
+
+using std::string;
+using std::map;
+using std::vector;
+using std::wstring;
+
+// Хэщ для символа находится как полиномиальный хэш для строки, гугл в помощь.
+// Число q = 31 взято не с потолка. Т.к. 31 умещяется в одно слово(ассемблер), то для x86 битных процессоров
+// проще производить операции с ним, т.к. q умещается в регистр, из-за чего быстрее скорость арифметических операций.
+// x - нужен для вычисления хэша символа, опять же как и в полиномиальном хэше строки, берйтся в диапозоне от 1 до 31 - 2,
+// умножается само на себя после вычисления хэша символа.
+class RabinCarp{
+private:
+    map<wchar_t, int> charsHashMap; // таблица хэшей символов
+    const int q = 31; // число для взятия остатка.
+    int x; // число, для умножения кода от символа на x.
+    const wstring pattern; // паттерн
+    int patternHash = 0; // Хэш паттерна
+    RabinCarp() : pattern(){}
+
+public:
+    RabinCarp(wstring _pattern) : pattern(_pattern), x((rand() % q - 2) + 1){
+        for(int i = 0; i < pattern.length(); i++){
+            patternHash += hashValue(pattern[i]); // изначально вычисляем хэш паттерна, дабы не тратить время.
+        }
+    }
+
+    /**
+     * Функция, возвращает все вхождения паттерна в тексте.
+     * @param text - текст
+     * @param uppercaseRequest - учёт регистра при сравнении
+     * @return
+     */
+    vector<int> search(wstring text){
+        vector<int> indexes;
+        if(text.empty() || pattern.empty() || pattern.length() > text.length()) // аналогично с БМХ
+            return indexes;
+
+        int currentTextHash = 0; // Хэш для текста
+        int pLength = pattern.length();
+        for(int i = 0; i < pLength; i++){ // вычисляем хэш для n-первых символов в тексте, где n - размер паттерна
+            currentTextHash += hashValue(text[i]);
+        }
+        if(patternHash == currentTextHash && compareStrings(text.substr(0, pLength), pattern)){ // первая проверка на совпадения
+            indexes.push_back(1);
+        }
+        for(int i = pLength; i < text.length(); i++){ // алгоритм нахождения паттерна в тексте, КАК раз наш кольцевой хэш, где
+            currentTextHash += hashValue(text[i]); // мы добавляем следующий символ
+            currentTextHash -= hashValue((text[i - pLength])); // и отнимаем предыдущий
+            if(currentTextHash == patternHash && compareStrings(text.substr(i - pLength + 1, i+1), pattern)){
+                indexes.push_back(i - pLength + 2);
+            }
+        }
+        return indexes;
+    }
+
+private:
+
+    // вычисляет и возвращает хэш символа одновременно запихивая его в таблицу.
+    int hashValue(wchar_t c){
+        if(charsHashMap.contains(c)) // если хэш для символа уже есть
+            return charsHashMap.find(c)->second;
+        else {
+            int hash = c * x % q; // вычисляем хэщ
+            x *= x;
+            charsHashMap.insert({c, hash});
+            return hash;
+        }
+    }
+
+    // сравниваем строки
+    bool compareStrings(wstring s1, wstring s2){
+        for(int i = 0; i < s2.length() ; i++){
+            if(s1[i] != s2[i])
+                return false;
+        }
+        return true;
+    }
+};
+#endif //BMH_RABINKARP_H

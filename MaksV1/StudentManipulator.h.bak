@@ -1,0 +1,106 @@
+#ifndef BMH_STUDENTMANIPULATOR_H
+#define BMH_STUDENTMANIPULATOR_H
+#include "Student.h"
+#include <fstream>
+#include <filesystem>
+#include <string>
+#include <Windows.h>
+#include <codecvt>
+
+namespace fs = std::filesystem;
+using std::string;
+using std::wstring;
+
+/**
+ * Функция, создающая объект студента из строки
+ * @param line - стоковая запись о студенте
+ * @return Student - объект студента
+ */
+Student createStudentFromString(wstring line) {
+    wstring temp;
+    wstring* words = new wstring[6];
+    int counter = 0;
+    for (int i = 0; i < line.length(); i++) {
+        if (line[i] == L' ') {
+            words[counter++] = temp;
+            temp.erase();
+        }
+        else {
+            temp += line[i];
+        }
+    }
+    //words[counter++] = temp;
+    wstring firstname = words[1];
+    wstring surname = words[2];
+    wstring lastname = words[3];
+    wstring domain = words[4];
+    int group = std::stoi(words[0]);
+    wstring birthDate = temp;
+    Student s(firstname, surname, lastname, domain, group, birthDate);
+    delete[] words;
+    return s;
+}
+
+std::wstring utf8_to_wstring(const std::string& str)
+{
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
+    return myconv.from_bytes(str);
+}
+
+std::string wstring_to_utf8(const std::wstring& str)
+{
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
+    return myconv.to_bytes(str);
+}
+
+/**
+ * Функция, считывающая из файла записи р студентах
+ * @param fileName - имя файла, находящегося в одной папке с StudentManipulator.cpp
+ * @return Student* - массив записей о студентах
+ */
+Student* readStudentsFromFile(string filename) {
+    string path = fs::current_path().string(); // получаем текущий путь до самого файла(StudentsManipulator.cpp)
+    int pos = path.find("out\\build\\x64-Debug");
+    path.erase(pos, path.length() - 1);
+    path += "\\" + filename;
+    std::ifstream reader(path);
+    if (!reader) {
+        return new Student[0];
+    }
+    string line;                                    //
+    std::getline(reader, line);                     // Считываем первую строку, т.е. кол-во записей
+    Student* array = new Student[std::stoi(line)];  //
+    int counter = 0;
+    while (std::getline(reader, line)) {// Считываем строку
+        wstring temp = utf8_to_wstring(line);
+        Student s = createStudentFromString(temp);
+        array[counter++] = s;
+    }
+    reader.close();
+    return array;
+}
+
+/**
+ * Функция, записывающая студентов в файл
+ * @param array - массив типа Student
+ * @param arraySize - размер массива
+ * @param outputFilename - имя файла для записи студентов, будет находится рядом с StudentManipulator.cpp
+ */
+void writeStudentsToFile(Student* array, int arraySize, string outputFilename) {
+    string path = fs::current_path().string();
+    int pos = path.find("out\\build\\x64-Debug");
+    path.erase(pos, path.length() - 1);
+    path += "\\" + outputFilename + ".txt";
+    std::ofstream writer(path);
+    for (int i = 0; i < arraySize; i++) {
+        wstring out = array[i].getFirstname() + L" "
+            + array[i].getSurname() + L" " + array[i].getLastname() + L" " + array[i].getBirthDate() + L" "
+            + array[i].getDomain();
+
+        string ss = wstring_to_utf8(out);
+        writer << std::to_string(array[i].getGroupNumber()) << " " << ss << "\n";
+        writer.flush();
+    }
+    writer.close();
+}
+#endif //BMH_STUDENTMANIPULATOR_H
